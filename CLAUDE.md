@@ -44,3 +44,42 @@
 1. **prepare job**: 确定版本标签和上传设置
 2. **build job**: 4个平台并行构建，执行 `./release.sh {platform}`
 3. **release job**: 仅在标签推送时创建 GitHub Release 并上传构建产物
+
+### 构建脚本关键逻辑
+
+#### 环境变量配置 (release.sh:6-13)
+```bash
+set -e                                    # 遇到错误立即退出
+TAG="${TAG:-19.1.2_20250312}"           # TAG 默认值，可通过环境变量覆盖
+VERSION_STRING="$TAG"                    # 版本字符串
+LLVM_PROJECTDIR="${LLVM_PROJECTDIR:-llvm-project}"  # LLVM 源码目录默认
+BUILD_DIR_BASE="${BUILD_DIR_BASE:-build}"           # 构建目录默认
+```
+
+#### 分支名自动推导 (release.sh:14-16)
+```bash
+LLVM_VERSION_FROM_TAG="${TAG%%_*}"       # 从 TAG 提取版本号 (19.1.2_20250312 → 19.1.2)
+LLVM_BRANCH="xtensa_release_${LLVM_VERSION_FROM_TAG}"  # 生成分支名 (xtensa_release_19.1.2)
+```
+
+#### macOS SDK 配置 (release.sh:27-33)
+```bash
+if [[ "$HOST_OS" == "Darwin" ]]; then
+    if [[ -z "$SDKROOT" ]]; then
+        export SDKROOT="$(xcrun --show-sdk-path)"  # 自动获取 macOS SDK 路径
+        echo "Setting SDKROOT to: $SDKROOT"
+    fi
+fi
+```
+
+### 使用示例
+```bash
+# 默认构建
+./release.sh x86_64-linux-gnu
+
+# 自定义版本
+TAG=19.1.3_20250401 ./release.sh x86_64-linux-gnu
+
+# 自定义多参数
+TAG=19.1.3_20250401 LLVM_PROJECTDIR=my-llvm BUILD_DIR_BASE=mybuild ./release.sh x86_64-linux-gnu
+```
